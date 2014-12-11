@@ -302,13 +302,16 @@ Select specific mailbox by path with `selectMailbox()`
 client.selectMailbox(path[, options], callback)
 ```
 
+**NB!** Does not re-select the mailbox if already selected.
+
 Where
 
   * **path** is the full path to the mailbox (see *path* property with `listMailboxes`)
   * **options** *optional* options object with the following properties
     * **condstore** if set to `true` adds (CONDSTORE) option when selecting
     * **readOnly** if set to `true` uses `EXAMINE` instead of `SELECT`
-  * **callback** is the callback function with the following arguments
+    * **force**
+  * **callback** is the callback function with the following arguments. **If mailbox is already selected, callback is invoked without arguments.**
     * **err** is an error object, only set if the request failed
     * **mailboxInfo** is an object with mailbox properties
       * **exists** (number) the count of messages in the selected mailbox

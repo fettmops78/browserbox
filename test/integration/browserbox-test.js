@@ -405,7 +405,9 @@
                             expect(err).to.not.exist;
                             expect(result).to.be.true;
 
-                            imap.selectMailbox('inbox', function(err, resultInfo) {
+                            imap.selectMailbox('inbox', {
+                                force: true
+                            }, function(err, resultInfo) {
                                 expect(err).to.not.exist;
                                 expect(initialInfo.exists !== resultInfo.exists).to.be.true;
                                 done();

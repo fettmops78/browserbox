@@ -83,6 +83,11 @@
         this.selectedMailbox = false;
 
         /**
+         * Selected mailbox
+         */
+        this.selectedMailboxMode = false;
+
+        /**
          * IMAP client object
          */
         this.client = new ImapClient(host, port, this.options);
@@ -98,8 +103,9 @@
     BrowserBox.prototype.STATE_CONNECTING = 1;
     BrowserBox.prototype.STATE_NOT_AUTHENTICATED = 2;
     BrowserBox.prototype.STATE_AUTHENTICATED = 3;
-    BrowserBox.prototype.STATE_SELECTED = 4;
-    BrowserBox.prototype.STATE_LOGOUT = 5;
+    BrowserBox.prototype.STATE_SELECTED_READONLY = 4;
+    BrowserBox.prototype.STATE_SELECTED_READWRITE = 5;
+    BrowserBox.prototype.STATE_LOGOUT = 6;
 
     // Timeout constants
 
@@ -1041,7 +1047,7 @@
     };
 
     /**
-     * Runs SELECT or EXAMINE to open a mailbox
+     * Runs SELECT or EXAMINE to open a mailbox, no-op if mailbox already selected in the same mode
      *
      * SELECT details:
      *   http://tools.ietf.org/html/rfc3501#section-6.3.1
@@ -1049,15 +1055,23 @@
      *   http://tools.ietf.org/html/rfc3501#section-6.3.2
      *
      * @param {String} path Full path to mailbox
-     * @param {Object} [options] Options object
-     * @param {Function} callback Return information about selected mailbox
+     * @param {Boolean} options.readOnly Examines the mailbox in read-only mode
+     * @param {Boolean} options.force Forces command even if mailbox is already selected
+     * @param {Function} callback Returns information about selected mailbox, invoked with undefined if mailbox already selected
      */
     BrowserBox.prototype.selectMailbox = function(path, options, callback) {
         if (!callback && typeof options === 'function') {
             callback = options;
             options = undefined;
         }
+
         options = options || {};
+
+        // does the command change the instance state?
+        var changesState = this.state !== (options.readOnly ? this.STATE_SELECTED_READONLY : this.STATE_SELECTED_READWRITE);
+        if (!options.force && this.selectedMailbox === path && !changesState) {
+            return callback();
+        }
 
         var query = {
             command: options.readOnly ? 'EXAMINE' : 'SELECT',
@@ -1080,7 +1094,7 @@
                 return next();
             }
 
-            this._changeState(this.STATE_SELECTED);
+            this._changeState(options.readOnly ? this.STATE_SELECTED_READONLY : this.STATE_SELECTED_READWRITE);
 
             if (this.selectedMailbox && this.selectedMailbox !== path) {
                 this.onclosemailbox(this.selectedMailbox);
@@ -1850,7 +1864,7 @@
         axe.debug(DEBUG_TAG, 'entering state: ' + this.state);
 
         // if a mailbox was opened, emit onclosemailbox and clear selectedMailbox value
-        if (this.state === this.STATE_SELECTED && this.selectedMailbox) {
+        if ((this.state === this.STATE_SELECTED_READONLY || this.state === this.STATE_SELECTED_READWRITE) && this.selectedMailbox) {
             this.onclosemailbox(this.selectedMailbox);
             this.selectedMailbox = false;
         }

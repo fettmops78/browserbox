@@ -574,8 +574,8 @@
                     expect(err).to.not.exist;
 
                     expect(br.exec.args[0][0]).to.deep.equal({
-                      command: 'CREATE',
-                      attributes: [mailboxName]
+                        command: 'CREATE',
+                        attributes: [mailboxName]
                     });
 
                     expect(br.exec.callCount).to.equal(1);
@@ -593,8 +593,8 @@
                     expect(err).to.not.exist;
 
                     expect(br.exec.args[0][0]).to.deep.equal({
-                      command: 'CREATE',
-                      attributes: [serverName]
+                        command: 'CREATE',
+                        attributes: [serverName]
                     });
 
                     expect(br.exec.callCount).to.equal(1);
@@ -604,8 +604,12 @@
             });
 
             it('should treat an ALREADYEXISTS response as success', function(done) {
-                var fakeErr = { code: 'ALREADYEXISTS' };
-                var fakeResp = { code: 'ALREADYEXISTS' };
+                var fakeErr = {
+                    code: 'ALREADYEXISTS'
+                };
+                var fakeResp = {
+                    code: 'ALREADYEXISTS'
+                };
                 sinon.stub(br, 'exec').yields(fakeErr, fakeResp, done);
                 var mailboxName = 'foo';
                 br.createMailbox(mailboxName, function(err, alreadyExists) {
@@ -620,7 +624,7 @@
                     expect(br.exec.callCount).to.equal(1);
 
                     br.exec.restore();
-                  });
+                });
             });
         });
 
@@ -892,10 +896,46 @@
                     }]
                 });
                 expect(br._parseSELECT.withArgs('abc').callCount).to.equal(1);
-                expect(br.state).to.equal(br.STATE_SELECTED);
+                expect(br.state).to.equal(br.STATE_SELECTED_READWRITE);
 
                 br.exec.restore();
                 br._parseSELECT.restore();
+            });
+
+            it('should run forced SELECT', function(done) {
+                sinon.stub(br, 'exec', function(command, untagged, callback) {
+                    callback(null, 'abc', done);
+                });
+                sinon.stub(br, '_parseSELECT');
+
+                br.state = br.STATE_SELECTED_READWRITE;
+                br.selectedMailbox = '[Gmail]/Trash';
+                br.selectMailbox('[Gmail]/Trash', {
+                    force: true
+                }, function() {});
+
+                expect(br.exec.callCount).to.equal(1);
+                expect(br.exec.args[0][0]).to.deep.equal({
+                    command: 'SELECT',
+                    attributes: [{
+                        type: 'STRING',
+                        value: '[Gmail]/Trash'
+                    }]
+                });
+                expect(br._parseSELECT.withArgs('abc').callCount).to.equal(1);
+                expect(br.state).to.equal(br.STATE_SELECTED_READWRITE);
+
+                br.exec.restore();
+                br._parseSELECT.restore();
+            });
+
+            it('should not run SELECT when mailbox is already open', function(done) {
+                br.state = br.STATE_SELECTED_READWRITE;
+                br.selectedMailbox = '[Gmail]/Trash';
+
+                br.selectMailbox('[Gmail]/Trash', {
+                    condstore: true
+                }, done);
             });
 
             it('should run SELECT with CONDSTORE', function(done) {
@@ -923,7 +963,7 @@
                     ]
                 });
                 expect(br._parseSELECT.withArgs('abc').callCount).to.equal(1);
-                expect(br.state).to.equal(br.STATE_SELECTED);
+                expect(br.state).to.equal(br.STATE_SELECTED_READWRITE);
 
                 br.exec.restore();
                 br._parseSELECT.restore();
@@ -1847,7 +1887,7 @@
 
             it('should emit onclosemailbox if mailbox was closed', function() {
                 sinon.stub(br, 'onclosemailbox');
-                br.state = br.STATE_SELECTED;
+                br.state = br.STATE_SELECTED_READWRITE;
                 br.selectedMailbox = 'aaa';
 
                 br._changeState(12345);
