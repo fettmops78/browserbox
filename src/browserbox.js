@@ -83,11 +83,6 @@
         this.selectedMailbox = false;
 
         /**
-         * Selected mailbox
-         */
-        this.selectedMailboxMode = false;
-
-        /**
          * IMAP client object
          */
         this.client = new ImapClient(host, port, this.options);
